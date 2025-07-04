@@ -1,0 +1,275 @@
+{
+  "name": "Agente Pessoal Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message", "edited_message", "channel_post"]
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CRED_ID",
+          "name": "Telegram Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// extrai texto ou transcreve audio\nconst msg = $json.message || $json.channel_post;\nlet text = msg.text;\nif (msg.voice) {\n  // substituir por chamada a servico de transcricao\n  text = 'AUDIO: ' + msg.voice.file_id;\n}\nreturn [{ text }];"
+      },
+      "name": "Preparar Texto",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const cmd = items[0].json.text.toLowerCase();\nlet action = 'default';\nif (cmd.includes('email')) action = 'email';\nelse if (cmd.includes('evento')) action = 'calendario';\nelse if (cmd.includes('documento')) action = 'documento';\nelse if (cmd.includes('buscar')) action = 'rag';\nreturn [{ action, text: items[0].json.text }];"
+      },
+      "name": "Identificar Acao",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"action\"]}}",
+              "operation": "equal",
+              "value2": "email"
+            }
+          ]
+        }
+      },
+      "name": "Se Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 150]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"action\"]}}",
+              "operation": "equal",
+              "value2": "calendario"
+            }
+          ]
+        }
+      },
+      "name": "Se Calendario?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"action\"]}}",
+              "operation": "equal",
+              "value2": "documento"
+            }
+          ]
+        }
+      },
+      "name": "Se Documento?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 450]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"action\"]}}",
+              "operation": "equal",
+              "value2": "rag"
+            }
+          ]
+        }
+      },
+      "name": "Se RAG?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 600]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "text": "{{\"Email enviado\"}}",
+        "chatId": "={{$json.message.chat.id}}"
+      },
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [800, 150],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CRED_ID",
+          "name": "Telegram Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "text": "{{\"Evento criado no calendario\"}}",
+        "chatId": "={{$json.message.chat.id}}"
+      },
+      "name": "Criar Evento",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [800, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CRED_ID",
+          "name": "Telegram Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "text": "{{\"Documento criado/editado\"}}",
+        "chatId": "={{$json.message.chat.id}}"
+      },
+      "name": "Gerenciar Documento",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [800, 450],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CRED_ID",
+          "name": "Telegram Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "text": "{{\"Resposta RAG\"}}",
+        "chatId": "={{$json.message.chat.id}}"
+      },
+      "name": "Executar RAG",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [800, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CRED_ID",
+          "name": "Telegram Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Preparar Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Texto": {
+      "main": [
+        [
+          {
+            "node": "Identificar Acao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificar Acao": {
+      "main": [
+        [
+          {
+            "node": "Se Email?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Se Calendario?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Se Documento?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Se RAG?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se Email?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se Calendario?": {
+      "main": [
+        [
+          {
+            "node": "Criar Evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se Documento?": {
+      "main": [
+        [
+          {
+            "node": "Gerenciar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se RAG?": {
+      "main": [
+        [
+          {
+            "node": "Executar RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": 1
+}
